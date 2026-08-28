@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choureime WiFi Manager</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f4f7;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background: #111827;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.container {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 15px;
+}
+
+.cards {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    flex: 1;
+    min-width: 180px;
+    box-shadow: 0 2px 8px #ccc;
+}
+
+button {
+    background: #111827;
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 5px;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+input, select {
+    padding: 10px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+}
+
+.section {
+    background: white;
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px #ddd;
+}
+
+.ticket {
+    border-bottom: 1px solid #ddd;
+    padding: 12px 0;
+}
+
+.active {
+    color: green;
+    font-weight: bold;
+}
+
+.expired {
+    color: red;
+    font-weight: bold;
+}
+
+.available {
+    color: #2563eb;
+    font-weight: bold;
+}
+
+#message {
+    margin: 10px 0;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>?? Choureime WiFi Manager</h1>
+    <p>Gestion de ma Wi-Fi Zone</p>
+</header>
+
+<div class="container">
+
+    <div class="cards">
+
+        <div class="card">
+            <h3>?? Clients</h3>
+            <h2 id="clients">0</h2>
+        </div>
+
+        <div class="card">
+            <h3>?? Tickets actifs</h3>
+            <h2 id="activeTickets">0</h2>
+        </div>
+
+        <div class="card">
+            <h3>?? Tickets expirés</h3>
+            <h2 id="expiredTickets">0</h2>
+        </div>
+
+    </div>
+
+    <div class="section">
+
+        <h2>?? Créer un ticket</h2>
+
+        <input
+            type="number"
+            id="price"
+            placeholder="Prix en F CFA"
+            value="100"
+        >
+
+        <select id="duration">
+            <option value="1">1 heure</option>
+            <option value="3">3 heures</option>
+            <option value="24">24 heures</option>
+            <option value="168">7 jours</option>
+        </select>
+
+        <button onclick="createTicket()">
+            ? Créer le ticket
+        </button>
+
+        <div id="message"></div>
+
+    </div>
+
+    <div class="section">
+
+        <h2>?? Rechercher un ticket</h2>
+
+        <input
+            type="text"
+            id="search"
+            placeholder="Exemple : A7K92P"
+            oninput="displayTickets()"
+        >
+
+    </div>
+
+    <div class="section">
+
+        <h2>?? Mes tickets</h2>
+
+        <div id="ticketList"></div>
+
+    </div>
+
+    <div class="section">
+
+        <h2>?? Clients connectés</h2>
+
+        <p id="noClients">
+            Aucun client connecté pour le moment.
+        </p>
+
+    </div>
+
+</div>
+
+<script>
+
+let tickets = JSON.parse(
+    localStorage.getItem("choureimeTickets")
+) || [];
+
+function generateCode() {
+
+    const characters =
+        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    let code = "";
+
+    for (let i = 0; i < 6; i++) {
+        code += characters.charAt(
+            Math.floor(Math.random() * characters.length)
+        );
+    }
+
+    return code;
+}
+
+function createTicket() {
+
+    const price =
+        document.getElementById("price").value;
+
+    const duration =
+        document.getElementById("duration").value;
+
+    if (!price) {
+        alert("Entre le prix du ticket.");
+        return;
+    }
+
+    const ticket = {
+
+        code: generateCode(),
+
+        price: Number(price),
+
+        duration: Number(duration),
+
+        created: new Date().toLocaleString(),
+
+        status: "Disponible"
+
+    };
+
+    tickets.push(ticket);
+
+    localStorage.setItem(
+        "choureimeTickets",
+        JSON.stringify(tickets)
+    );
+
+    document.getElementById("message").innerHTML =
+        "? Ticket créé : <strong>" +
+        ticket.code +
+        "</strong>";
+
+    displayTickets();
+
+}
+
+function displayTickets() {
+
+    const list =
+        document.getElementById("ticketList");
+
+    const search =
+        document.getElementById("search")
+        .value
+        .toUpperCase();
+
+    list.innerHTML = "";
+
+    let active = 0;
+    let expired = 0;
+
+    tickets.forEach((ticket, index) => {
+
+        if (
+            search &&
+            !ticket.code.includes(search)
+        ) {
+            return;
+        }
+
+        if (ticket.status === "Actif") {
+            active++;
+        }
+
+        if (ticket.status === "Expiré") {
+            expired++;
+        }
+
+        let statusClass = "available";
+
+        if (ticket.status === "Actif") {
+            statusClass = "active";
+        }
+
+        if (ticket.status === "Expiré") {
+            statusClass = "expired";
+        }
+
+        const div =
+            document.createElement("div");
+
+        div.className = "ticket";
+
+        div.innerHTML = `
+
+            <strong>?? ${ticket.code}</strong>
+
+            <br>
+
+            Prix :
+            ${ticket.price} F CFA
+
+            <br>
+
+            Durée :
+            ${ticket.duration} heure(s)
+
+            <br>
+
+            Créé :
+            ${ticket.created}
+
+            <br>
+
+            État :
+            <span class="${statusClass}">
+                ${ticket.status}
+            </span>
+
+            <br>
+
+            <button onclick="activateTicket(${index})">
+                ?? Activer
+            </button>
+
+            <button onclick="expireTicket(${index})">
+                ?? Expirer
+            </button>
+
+            <button onclick="deleteTicket(${index})">
+                ??? Supprimer
+            </button>
+
+        `;
+
+        list.appendChild(div);
+
+    });
+
+    document.getElementById(
+        "activeTickets"
+    ).innerText = active;
+
+    document.getElementById(
+        "expiredTickets"
+    ).innerText = expired;
+
+}
+
+function activateTicket(index) {
+
+    tickets[index].status = "Actif";
+
+    saveTickets();
+
+}
+
+function expireTicket(index) {
+
+    tickets[index].status = "Expiré";
+
+    saveTickets();
+
+}
+
+function deleteTicket(index) {
+
+    if (
+        confirm(
+            "Supprimer ce ticket ?"
+        )
+    ) {
+
+        tickets.splice(index, 1);
+
+        saveTickets();
+
+    }
+
+}
+
+function saveTickets() {
+
+    localStorage.setItem(
+        "choureimeTickets",
+        JSON.stringify(tickets)
+    );
+
+    displayTickets();
+
+}
+
+displayTickets();
+
+</script>
+
+</body>
+</html>
